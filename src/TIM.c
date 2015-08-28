@@ -24,6 +24,7 @@ extern state_t			prev_state;
 uint16_t left;
 uint16_t right;
 uint16_t index;
+FRESULT ret_val;
 void TIM7_IRQHandler()
 {
 	//	Clear the interrupt flag
@@ -61,11 +62,15 @@ void TIM7_IRQHandler()
 		if(wav_eof)
 		{
 			TIM_Stop(TIM7);
-			f_lseek(&sd_current_file, 0);
-			f_read(&sd_current_file, sd_data_buffer_additional, 44, &index);
-			wav_eof = false;
-			state = STATE_WAIT;
+			//ret_val = f_lseek(&sd_current_file, 0);
+			ret_val = f_close(&sd_current_file);
+			//ret_val = f_read(&sd_current_file, sd_data_buffer_additional, 44, &index);
+
 			wav_file_playing = false;
+			wav_file_chosen = false;
+
+			state = STATE_EXECUTE_USER_REQUESTS;
+
 
 			buffer_index = 0;
 		}

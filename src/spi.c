@@ -333,17 +333,16 @@ void SPI_Send_Data_Only(SPI_TypeDef* SPI, uint8_t* data, uint16_t data_size)
 	spi_transmission_in_progress = true;
 
 	SPI->CR1 &= ~SPI_CR1_RXONLY;
-	//	Enable SPI
-	SPI_Enable(SPI);
+
 	// 	Disable the SPI RX interrupt generation
 	SPI_Disable_Rx_Irq(SPI);
 	//	Enable the SPI TX interrupt generation
 	SPI_Enable_Tx_Irq(SPI);
-
+	//	Enable SPI
+	SPI_Enable(SPI);
 	//	Wait till transmission is over
 	while(spi_transmission_in_progress)
 	{
-	    __WFE();
 	}
 
 }
