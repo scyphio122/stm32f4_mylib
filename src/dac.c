@@ -96,7 +96,7 @@ inline void DAC_Put_Data_Single_12bit_L(uint16_t data)
  */
 inline void DAC_Put_Data_Dual_12bit_R(uint32_t data)
 {
-	DAC->DHR12RD = data & 0x0FFF0FFF;
+	DAC->DHR12RD = (data);// & 0x0FFF0FFF) + (2048<<16 + 2048);
 }
 /**
  * \brief This function puts the data in the 12 bit register with right data alignment of both DAC channels
@@ -105,7 +105,7 @@ inline void DAC_Put_Data_Dual_12bit_R(uint32_t data)
  */
 inline void DAC_Put_Data_Dual_12bit_L(uint32_t data)
 {
-	DAC->DHR12LD = data & 0xFFF0FFF0;
+	DAC->DHR12LD = (data & 0xFFF0FFF0);// + 32768 + 32768 <<16 )>>4;//(data) + (2048<<16 + 2048);
 }
 /**
  * \brief This function puts the data in the 12 bit register with right data alignment of both DAC channels

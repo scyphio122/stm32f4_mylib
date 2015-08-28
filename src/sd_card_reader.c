@@ -191,7 +191,6 @@ uint32_t SD_Send_Command(uint8_t command, uint8_t* argument_array)
 	}
 	//	Send command
 	SPI_Send_Data_Only(CARD_READER_SPI, sd_card_data_frame, sizeof(sd_card_data_frame));
-	SysTick_Delay(10);
 	//	Wait for the response accordingly to the command type
 	switch(command)
 	{

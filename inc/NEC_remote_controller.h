@@ -19,7 +19,7 @@
 #define NEC_TIMERx_PERIOD					TIM6_PERIOD	   //*
 #define NEC_EXTI                            EXTI_LINE_10   //*
 #define NEC_EXTI_IRQn                       EXTI15_10_IRQn //*
-#define NEC_PRIOR                          	15             //*
+#define NEC_PRIOR                          	0            //*
 //  **********************************************************
 
 #define NEC_LOGICAL_ONE_TRANSMISSION_TIME           (uint16_t)2400  //  In microseconds

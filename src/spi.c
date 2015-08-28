@@ -37,11 +37,11 @@ void SPI2_IRQHandler()
 				//	Clear transmission flag
 				spi_transmission_in_progress = false;
 			}
-			/*else
+			else
 			{
 				//	Put empty char on the MISO line to generate clock
-				SPI2->DR = SPI_CLOCK_GENERATOR_CHAR;
-			}*/
+
+			}
 	    }
 	}
 
@@ -56,13 +56,13 @@ void SPI2_IRQHandler()
 			if(rx_byte_counter >= spi_rx_buffer.data_size)
 			{
 				//	Disable TX interrupt because in order to receive data we have to send something
-				//SPI_Disable_Tx_Irq(SPI2);
+				SPI_Disable_Tx_Irq(SPI2);
 				//	Disable RX interrupt
 				SPI_Disable_Rx_Irq(SPI2);
 
-				SysTick_Delay(SYSTICK_FREQ/SPI_Get_Freq_Hz(SPI2)+1);
+				//SysTick_Delay(SYSTICK_FREQ/SPI_Get_Freq_Hz(SPI2)+1);
 				//	Disable the communication
-				SPI_Disable_Periph_Rx_Only(SPI2);
+				//SPI_Disable_Periph_Rx_Only(SPI2);
 				//	Clear the byte counter
 				rx_byte_counter = 0;
 				//	Clear transmission flag
@@ -74,11 +74,15 @@ void SPI2_IRQHandler()
 				//	Clear transmission flag
 				//spi_transmission_in_progress = false;
 			}
-			//else
-				/*if(rx_byte_counter == spi_rx_buffer.data_size)
+			else
+			{
+				SPI2->DR = SPI_CLOCK_GENERATOR_CHAR;
+				do
 				{
 
-				}*/
+				}while((SPI2->SR & SPI_SR_RXNE) == 0);
+			}
+
 		}
 		else
 		{	// Get the dummy data
@@ -360,9 +364,9 @@ void SPI_Receive_Data_Only(SPI_TypeDef* SPI, uint8_t* receive_data, uint16_t rec
 	spi_rx_buffer.data = receive_data;
 	spi_rx_buffer.data_size = receive_data_size;
 	//	Set the RX only
-	SPI->CR1 |= SPI_CR1_RXONLY;
+	//SPI->CR1 |= SPI_CR1_RXONLY;
 	SPI_Enable_Rx_Irq(SPI);
-	//SPI_Enable_Tx_Irq(SPI);
+	SPI_Enable_Tx_Irq(SPI);
 	//	Enable SPI
 	SPI_Enable(SPI);
 	//	Wait till transmission is over

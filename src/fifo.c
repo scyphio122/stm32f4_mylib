@@ -70,10 +70,11 @@ uint8_t Fifo_Get(fifo_t* fifo, uint8_t* character)
  */
 uint8_t Fifo_Put(fifo_t* fifo, uint8_t char_to_put)
 {
+#ifdef	FIFO_OVERRUN_NEEDED
 	//	Check if there wouldn'n be an overrun of data
 	if((fifo->input_index  == fifo->output_index) && (fifo->byte_counter != 0))
 		return FIFO_OVERRUN;
-
+#endif
 	//	Load the character in the fifo
 	fifo->queue[fifo->input_index] = char_to_put;
 	//	Increase the input data index
