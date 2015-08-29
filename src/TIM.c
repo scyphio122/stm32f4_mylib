@@ -21,8 +21,9 @@ uint8_t* 				empty_data_buf_ptr;
 uint32_t 				samples = 0;
 extern state_t			state;
 extern state_t			prev_state;
-uint16_t left;
-uint16_t right;
+int16_t left;
+int16_t right;
+int16_t diff;
 uint16_t index;
 FRESULT ret_val;
 void TIM7_IRQHandler()
@@ -33,11 +34,20 @@ void TIM7_IRQHandler()
 
 	memcpy(&left, &sd_data_buffer[index % sizeof(sd_data_buffer)], sizeof(uint16_t));
 	memcpy(&right, &sd_data_buffer[(index % sizeof(sd_data_buffer)) + 2], sizeof(uint16_t));
-	left = (int16_t)left;
-	right = (int16_t)right;
+	//left = (int16_t)(left;
+	//right = (int16_t)right;
 	//samples += (32768 << 16) + 32768;
-	left += 32768;
-	right += 32768;
+	left += 32768;//32768;
+	right += 32768;//32768;
+	diff = left - 32768;
+	diff = diff *0.25;
+	left = 32768+diff;
+
+	diff = right - 32768;
+	diff = diff *0.25;
+	right = 32768+diff;
+	//left = left >> 1;
+	//right = right >> 1;
 
 	samples = ((uint32_t)(left)<<16) + (uint32_t)right;
 
