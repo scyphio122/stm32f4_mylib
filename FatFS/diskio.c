@@ -78,8 +78,11 @@ DRESULT disk_read (
 		return RES_NOTRDY;	//	Disc other than 0 is not used
 
 	//	Read single block
-	for(uint16_t i = 0; i< count; i++)
+	//for(uint16_t i = 0; i< count; i++)
+	if(count == 1)
 		SD_Read_Single_Block(sector, buff);
+	else
+		SD_Read_Multiple_Blocks(sector, buff, count);
 	return RES_OK;
 }
 

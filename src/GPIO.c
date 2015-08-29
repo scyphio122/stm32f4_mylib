@@ -213,7 +213,31 @@ void GPIO_AlternateFunctionSet(GPIO_TypeDef* GPIOx, uint32_t pin32_t,uint8_t AF_
 	}
 }
 
+/**
+ * \brief This function configures the given pins (\var pins) in analog mode for ADC or DAC control
+ * \param GPIO	 -	the port which pins are to be configured
+ * \param pins32 -  the given pins encoded as specified GPIO.h module
+ */
 inline void GPIO_Analog_Configure(GPIO_TypeDef* GPIO, uint32_t pins32)
 {
 	GPIO->MODER |= pins32;
+}
+
+/**
+ * \brief This function sets the given pins in high state
+ * \param GPIO	 -	the port which pins are to be configured
+ * \param pins32 -  the given pins encoded as specified stm32f4_gpio_hal.h module
+ */
+void GPIO_Set_Bit(GPIO_TypeDef* GPIO, uint32_t gpio_pins)
+{
+	GPIO->BSRR |= gpio_pins;
+}
+/**
+ * \brief This function sets the given pins in low state
+ * \param GPIO	 -	the port which pins are to be configured
+ * \param pins32 -  the given pins encoded as specified stm32f4_gpio_hal.h module
+ */
+void GPIO_Clear_Bit(GPIO_TypeDef* GPIO, uint32_t gpio_pins)
+{
+	GPIO->BSRR |= gpio_pins << 16;
 }

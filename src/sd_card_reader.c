@@ -25,8 +25,8 @@ FIL						sd_current_file;						/*< The current file */
 FILINFO					sd_current_file_information;			/*< The current checked file informations	*/
 
 TCHAR					sd_files_list[FILE_ARRAY_SIZE][13];		/*< The array where the file names will be held. The second dimension is 13 because of the max short file name size in FatFS */
-BYTE					sd_data_buffer[512];
-BYTE					sd_data_buffer_additional[512];
+BYTE					sd_data_buffer[SD_BUFFER_SIZE];
+BYTE					sd_data_buffer_additional[SD_BUFFER_SIZE];
 uint16_t				read_data_byte_counter = 0;
 
 /*************************************************************************************************************************************************/
@@ -160,6 +160,209 @@ bool SD_Check_If_Card_Present()
 	return false;
 }
 
+/**
+ * \brief This function is responsible for initialization of the sd card and putting it in the SPI communication mode
+ */
+uint32_t SD_Card_Init()
+{
+	uint32_t err_code = 0;
+	uint8_t empty_clock_data = 0xff;
+	uint16_t command = 0;
+	uint8_t max_block_read_count[4] = {0, 0, 0, 4};
+
+	Log_Uart("### Inicjalizacja karty SD ###\n\r\n\r");
+	//	Wait 1 ms after powering up the SD card
+	SysTick_Delay(1);
+
+	Log_Uart("Zmiana czestotliwosci zegara do konfiguracji modulu SPI w karcie SD\n\r");
+	//	Set the SPI in low speed
+	SPI_Change_Clock(CARD_READER_SPI, CARD_READER_SPI_LOW_SPEED_PRESCALER);
+
+	/*if(!SD_Check_If_Card_Present())
+	{
+		Log_Uart("Nie wykryto karty w slocie\n\r");
+		while(1);
+	}*/
+	//	Send 80 clock impulses to initialize the SD Card(more than 74)
+
+	for(uint8_t i = 0; i<10; i++)
+		SPI_Send_Data_Only(CARD_READER_SPI, &empty_clock_data, sizeof(empty_clock_data));
+
+	//	Send the software reset command and put the card in SPI mode
+	Log_Uart("Wykonuje reset karty SD\n\r");
+	err_code = SD_Send_Command(SD_GO_IDLE_STATE, NULL);
+	if(err_code != R1_RESP_IDLE_STATE)
+	{
+		Log_Uart("B³¹d transmisji po wys³aniu CMD0\n\r");
+		while(1);
+	}
+
+	Log_Uart("Wysylam zadanie inicjalizacji karty SD\n\r");
+	do
+	{
+		uint8_t counter = 0;
+
+		command = CMD1;
+		//	Wyslij zadanie inicjalizacji
+		SPI_Send_Data_Only(CARD_READER_SPI, &command, 1);
+		do
+		{
+			// Czekaj na wejscie w stan idle
+			SPI_Receive_Data_Only(CARD_READER_SPI, &r1_response, 1);
+			counter++;
+		}while((r1_response.bitfields.idle_state != 0) && (counter<8));
+
+	} while (r1_response.bitfields.idle_state != 0);
+
+	Log_Uart("Wysylam zapytanie o dopusczalne poziomy napiec dla karty SD\n\r");
+
+	//	Get the operating voltage for the sd card
+	uint32_t operating_voltage = SD_Send_Command(CMD58, NULL);
+	if(operating_voltage < SD_OCR_VOLTAGE_3V)
+	{
+		Log_Uart("Niewlasciwe progi napiec dla karty SD\n\r");
+		while(1);
+	}
+	//	Change the default max multiple read/write block count
+	SD_Send_Command(CMD12, max_block_read_count);
+
+	Log_Uart("Progi napiec zgodne z wymaganiami.\n\rZmiana czestotliwosci SPI na 21MHz\n\r");
+	//	Set the SPI clock frequency to ~21MHz
+	SPI_Change_Clock(CARD_READER_SPI, CARD_READER_SPI_HIGH_SPEED_PRESCALER);
+	Log_Uart("Inicjalizacja karty przebiegla pomyslnie!\n\r");
+
+	return RES_OK;
+}
+
+/**
+ * \brief This function returns the configured block size in bytes of the sd card.
+ * \return block size. Its value can be equal: 512, 1024, 2048 bytes
+ */
+uint16_t SD_Get_Block_Size()
+{
+	uint8_t data_token = 0;
+	uint16_t crc;
+
+	//	Send request for CSD register
+	SD_Send_Command(SD_SEND_CSD, NULL);
+
+	//	Wait for data block token
+	do
+	{
+		SPI_Receive_Data_Only(CARD_READER_SPI, &data_token, 1);
+	}while(data_token != 0xFE);
+	//	Get the CSD register
+	SPI_Receive_Data_Only(CARD_READER_SPI, sd_card_csd_configuration_buffer, sizeof(sd_card_csd_configuration_buffer));
+
+	//	Get the CRC value
+	SPI_Receive_Data_Only(CARD_READER_SPI, &crc, sizeof(crc));
+	//	Get the block size information from the CSD register
+	uint16_t card_size = ((sd_card_csd_configuration_buffer[6] & 0x02)<<10) | (sd_card_csd_configuration_buffer[7] << 2 ) | ((sd_card_csd_configuration_buffer[8]&0xC)>>6);
+	uint8_t read_block_size  = sd_card_csd_configuration_buffer[5] & (uint8_t)0x0F;
+	uint8_t write_block = (((sd_card_csd_configuration_buffer[13] & 0xC0)>>6)) | ((sd_card_csd_configuration_buffer[12] & 0x02)<<2);
+	//	Check if the block size has valid value
+	if((read_block_size < 9) || (read_block_size > 12))
+	{
+		Log_Uart("Blad odczytu rozmiaru bloku karty SD\n\r");
+		return SD_CARD_INVALID_BLOCK_SIZE;
+	}
+	//	Calculate the block size (card returns the block size encoded as the power of 2)
+	data_block_size = 1 << read_block_size;
+	Log_Uart("Rozmiar bloku karty SD odczytany poprawnie\n\r");
+	return SD_CARD_OP_OK;
+}
+
+/**
+ * \brief This function is the base of the communication with an SD card. It sends an request for the single data block, waits for response and data token and finally gets the block
+ *
+ * \param sector_number[IN] - the logical number of the sector, given by FatFS library. To get the physical sector address it should be multiplied by the sector size (configured in FatFS ff_conf.h)
+ * \param data_buffer[OUT] - the pointer to the buffer where the data is to be stored. It is passed by FatFS function
+ *
+ * \return the value of r1_response
+ */
+uint16_t SD_Read_Single_Block(DWORD sector_number, BYTE* data_buffer)
+{
+	uint8_t data_token = 0;
+	uint8_t command_arguments[4] = {0};
+	uint32_t physical_address = sector_number * 512;
+	uint16_t crc;
+	command_arguments[3] = (uint8_t)physical_address;
+	command_arguments[2] = (uint8_t)(physical_address >> 8);
+	command_arguments[1] = (uint8_t)(physical_address >> 16);
+	command_arguments[0] = (uint8_t)(physical_address >> 24);
+	//	Send the request of 1 data block
+	uint8_t retval = SD_Send_Command(CMD17, command_arguments);
+	if(retval != 0)
+	{
+		while(1);
+	}
+	//	Wait for the data token which signals data block start
+	do
+	{
+		//	Wait for the data token
+		SPI_Receive_Data_Only(CARD_READER_SPI, &data_token, 1);
+
+		//	If the error token was received then put it in the global variable to
+		if((data_token & (uint8_t)0xF0) == (uint8_t)0)
+		{
+			error_token.byte = data_token;
+			Log_Uart("Karta zwrocila Error Token w trakcie odczytu pojedynczego bloku\n\r");
+			while(1);
+		}
+	}while(data_token != (uint8_t)0xFE);
+
+	//	Get the data
+	SPI_Receive_Data_Only(CARD_READER_SPI, data_buffer, 512);
+	//	Receive the data block and CRC (additional 2 bytes required to receive)
+	SPI_Receive_Data_Only(CARD_READER_SPI, (uint8_t*)&crc, 2);
+
+	return 0;
+}
+
+uint16_t SD_Read_Multiple_Blocks(DWORD start_sector_number, BYTE* data_buffer, UINT sector_count)
+{
+	uint8_t data_token = 0;
+	uint8_t command_arguments[4] = {0};
+	uint32_t physical_address = start_sector_number * 512;
+	uint16_t crc;
+	uint8_t sector_counter = 0;
+	command_arguments[3] = (uint8_t)physical_address;
+	command_arguments[2] = (uint8_t)(physical_address >> 8);
+	command_arguments[1] = (uint8_t)(physical_address >> 16);
+	command_arguments[0] = (uint8_t)(physical_address >> 24);
+	//	Send the request of 1 data block
+	uint8_t retval = SD_Send_Command(CMD18, command_arguments);
+	if(retval != 0)
+	{
+		while(1);
+	}
+
+	//	Wait for the data token which signals data block start
+	do
+	{
+		//	Wait for the data token
+		SPI_Receive_Data_Only(CARD_READER_SPI, &data_token, 1);
+
+		//	If the error token was received then put it in the global variable to
+		if((data_token & (uint8_t)0xF0) == (uint8_t)0)
+		{
+			error_token.byte = data_token;
+			Log_Uart("Karta zwrocila Error Token w trakcie odczytu pojedynczego bloku\n\r");
+			while(1);
+		}
+	}while(data_token != (uint8_t)0xFE);
+
+	do
+	{
+		//	Receive the data block and CRC (additional 2 bytes required to receive)
+		SPI_Receive_Data_Only(CARD_READER_SPI, data_buffer + (512 << sector_counter) ,512);
+		SPI_Receive_Data_Only(CARD_READER_SPI, (uint8_t*)&crc, 2);
+		sector_counter++;
+	}while(sector_counter < sector_count);
+
+	return 0;
+}
+
 
 /**
  * \brief This function implements the most basic communication level with the SD card. It sends the given command with arguments and waits for response
@@ -250,157 +453,4 @@ uint32_t SD_Send_Command(uint8_t command, uint8_t* argument_array)
 
 	return ret_val;
 }
-
-/**
- * \brief This function is responsible for initialization of the sd card and putting it in the SPI communication mode
- */
-uint32_t SD_Card_Init()
-{
-	uint32_t err_code = 0;
-	uint8_t empty_clock_data = 0xff;
-	uint16_t command = 0;
-
-	Log_Uart("### Inicjalizacja karty SD ###\n\r\n\r");
-	//	Wait 1 ms after powering up the SD card
-	SysTick_Delay(1);
-
-	Log_Uart("Zmiana czestotliwosci zegara do konfiguracji modulu SPI w karcie SD\n\r");
-	//	Set the SPI in low speed
-	SPI_Change_Clock(CARD_READER_SPI, CARD_READER_SPI_LOW_SPEED_PRESCALER);
-
-	/*if(!SD_Check_If_Card_Present())
-	{
-		Log_Uart("Nie wykryto karty w slocie\n\r");
-		while(1);
-	}*/
-	//	Send 80 clock impulses to initialize the SD Card(more than 74)
-
-	for(uint8_t i = 0; i<10; i++)
-		SPI_Send_Data_Only(CARD_READER_SPI, &empty_clock_data, sizeof(empty_clock_data));
-
-	//	Send the software reset command and put the card in SPI mode
-	Log_Uart("Wykonuje reset karty SD\n\r");
-	err_code = SD_Send_Command(SD_GO_IDLE_STATE, NULL);
-	if(err_code != R1_RESP_IDLE_STATE)
-	{
-		Log_Uart("B³¹d transmisji po wys³aniu CMD0\n\r");
-		while(1);
-	}
-
-	Log_Uart("Wysylam zadanie inicjalizacji karty SD\n\r");
-	do
-	{
-		uint8_t counter = 0;
-
-		command = CMD1;
-		//	Wyslij zadanie inicjalizacji
-		SPI_Send_Data_Only(CARD_READER_SPI, &command, 1);
-		do
-		{
-			// Czekaj na wejscie w stan idle
-			SPI_Receive_Data_Only(CARD_READER_SPI, &r1_response, 1);
-			counter++;
-		}while((r1_response.bitfields.idle_state != 0) && (counter<8));
-
-	} while (r1_response.bitfields.idle_state != 0);
-
-	Log_Uart("Wysylam zapytanie o dopusczalne poziomy napiec dla karty SD\n\r");
-
-	//	Get the operating voltage for the sd card
-	uint32_t operating_voltage = SD_Send_Command(CMD58, NULL);
-	if(operating_voltage < SD_OCR_VOLTAGE_3V)
-	{
-		Log_Uart("Niewlasciwe progi napiec dla karty SD\n\r");
-		while(1);
-	}
-
-	Log_Uart("Progi napiec zgodne z wymaganiami.\n\rZmiana czestotliwosci SPI na 21MHz\n\r");
-	//	Set the SPI clock frequency to ~21MHz
-	SPI_Change_Clock(CARD_READER_SPI, CARD_READER_SPI_HIGH_SPEED_PRESCALER);
-	Log_Uart("Inicjalizacja karty przebiegla pomyslnie!\n\r");
-
-	return RES_OK;
-}
-
-/**
- * \brief This function returns the configured block size in bytes of the sd card.
- * \return block size. Its value can be equal: 512, 1024, 2048 bytes
- */
-uint16_t SD_Get_Block_Size()
-{
-	uint8_t data_token = 0;
-	uint16_t crc;
-
-	//	Send request for CSD register
-	SD_Send_Command(SD_SEND_CSD, NULL);
-
-	//	Wait for data block token
-	do
-	{
-		SPI_Receive_Data_Only(CARD_READER_SPI, &data_token, 1);
-	}while(data_token != 0xFE);
-	//	Get the CSD register
-	SPI_Receive_Data_Only(CARD_READER_SPI, sd_card_csd_configuration_buffer, sizeof(sd_card_csd_configuration_buffer));
-
-	//	Get the CRC value
-	SPI_Receive_Data_Only(CARD_READER_SPI, &crc, sizeof(crc));
-	//	Get the block size information from the CSD register
-	uint16_t card_size = ((sd_card_csd_configuration_buffer[6] & 0x02)<<10) | (sd_card_csd_configuration_buffer[7] << 2 ) | ((sd_card_csd_configuration_buffer[8]&0xC)>>6);
-	uint8_t read_block_size  = sd_card_csd_configuration_buffer[5] & (uint8_t)0x0F;
-	uint8_t write_block = (((sd_card_csd_configuration_buffer[13] & 0xC0)>>6)) | ((sd_card_csd_configuration_buffer[12] & 0x02)<<2);
-	//	Check if the block size has valid value
-	if((read_block_size < 9) || (read_block_size > 12))
-	{
-		Log_Uart("Blad odczytu rozmiaru bloku karty SD\n\r");
-		return SD_CARD_INVALID_BLOCK_SIZE;
-	}
-	//	Calculate the block size (card returns the block size encoded as the power of 2)
-	data_block_size = 1 << read_block_size;
-	Log_Uart("Rozmiar bloku karty SD odczytany poprawnie\n\r");
-	return SD_CARD_OP_OK;
-}
-
-/**
- * \brief This function is the base of the communication with an SD card. It sends an request for the single data block, waits for response and data token and finally gets the block
- *
- * \param sector_number[IN] - the logical number of the sector, given by FatFS library. To get the physical sector address it should be multiplied by the sector size (configured in FatFS ff_conf.h)
- * \param data_buffer[OUT] - the pointer to the buffer where the data is to be stored. It is passed by FatFS function
- *
- * \return the value of r1_response
- */
-uint16_t SD_Read_Single_Block(DWORD sector_number, BYTE* data_buffer)
-{
-	uint8_t data_token = 0;
-	uint8_t command_arguments[4] = {0};
-	uint32_t physical_address = sector_number * 512;
-	command_arguments[3] = (uint8_t)physical_address;
-	command_arguments[2] = (uint8_t)(physical_address >> 8);
-	command_arguments[1] = (uint8_t)(physical_address >> 16);
-	command_arguments[0] = (uint8_t)(physical_address >> 24);
-	//	Send the request of 1 data block
-	uint8_t retval = SD_Send_Command(CMD17, command_arguments);
-	if(retval != 0)
-	{
-		while(1);
-	}
-	//	Wait for the data token which signals data block start
-	do
-	{
-		//	Wait for the data token
-		SPI_Receive_Data_Only(CARD_READER_SPI, &data_token, 1);
-
-		//	If the error token was received then put it in the global variable to
-		if((data_token & (uint8_t)0xF0) == (uint8_t)0)
-		{
-			error_token.byte = data_token;
-			Log_Uart("Karta zwrocila Error Token w trakcie odczytu pojedynczego bloku\n\r");
-			while(1);
-		}
-	}while(data_token != (uint8_t)0xFE);
-
-
-	//	Receive the data block and CRC (additional 2 bytes required to receive)
-	SPI_Receive_Data_Only(CARD_READER_SPI, data_buffer, 512);
-}
-
 

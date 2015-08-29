@@ -7,6 +7,7 @@
 #include "integer.h"
 #include "ff.h"
 
+#define SD_BUFFER_SIZE				512
 
 /**
  * NOTE:	SD Cards get arguments in reversed order. The last byte send to them is received as the least important byte!
@@ -161,8 +162,8 @@ extern DIR						sd_current_directory;					/*< The current directory	*/
 extern FIL						sd_current_file;						/*< The current file */
 extern FILINFO					sd_current_file_information;			/*< The current checked file informations	*/
 extern TCHAR					sd_files_list[FILE_ARRAY_SIZE][13];
-extern BYTE						sd_data_buffer[512];
-extern BYTE						sd_data_buffer_additional[512];
+extern BYTE						sd_data_buffer[SD_BUFFER_SIZE];
+extern BYTE						sd_data_buffer_additional[SD_BUFFER_SIZE];
 extern uint16_t					read_data_byte_counter;
 
 /***		HIGH LEVEL API	***/
@@ -177,5 +178,5 @@ uint32_t	SD_Send_Command(uint8_t command, uint8_t* argument_array);
 uint32_t	SD_Card_Init();
 uint16_t 	SD_Get_Block_Size();
 uint16_t 	SD_Read_Single_Block(DWORD sector_number, BYTE* data_buffer);
-
+uint16_t	SD_Read_Multiple_Blocks(DWORD start_sector_number, BYTE* data_buffer, UINT sector_count);
 #endif

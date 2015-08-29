@@ -129,21 +129,6 @@ void SPI_De_Init(SPI_TypeDef* SPI)
  */
 void SPI_Master_Init(SPI_TypeDef* SPI, uint8_t frequency, uint8_t cpol_cpha, uint8_t bit_order, bool hardware_chip_select)
 {
-	/*<	Configure the gpio pins in alternate function mode (for SPI2)	*/
-	//	Configure MISO, MOSI and NSS(Chip Select) Lines with pull up
-	GPIO_AlternateFunctionPrepare(SPI2_PORT, SPI2_MOSI | SPI2_MISO, gpio_otyper_push_pull, gpio_speed_fast, gpio_pupd_pull_up);
-	//	Configure SCK as no pull line
-	GPIO_AlternateFunctionPrepare(SPI2_PORT, SPI2_SCK, gpio_otyper_push_pull, gpio_speed_fast, gpio_pupd_pull_down);
-	GPIO_AlternateFunctionPrepare(SPI2_PORT, SPI2_NSS, gpio_otyper_push_pull, gpio_speed_fast, gpio_pupd_pull_up);
-	GPIO_AlternateFunctionSet(SPI2_PORT, SPI2_NSS, AF5);
-
-	//GPIO_OutputConfigure(SPI2_PORT, SPI2_NSS, gpio_otyper_push_pull, gpio_speed_high, gpio_pupd_pull_up);
-	//SPI2_PORT->ODR |= GPIO_ODR_ODR_12;
-	GPIO_AlternateFunctionSet(SPI2_PORT, SPI2_MISO, AF5);
-	GPIO_AlternateFunctionSet(SPI2_PORT, SPI2_MOSI, AF5);
-	GPIO_AlternateFunctionSet(SPI2_PORT, SPI2_SCK, AF5);
-
-
 	//	Reset the given SPI
 	SPI_De_Init(SPI);
 	//	Set the SPI as a master

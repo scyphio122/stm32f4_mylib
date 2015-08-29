@@ -31,10 +31,10 @@ void TIM7_IRQHandler()
 	TIM7->SR &= ~(TIM_SR_UIF);
 	//	Get the new sample
 
-	memcpy(&left, &sd_data_buffer[index % 512], sizeof(uint16_t));
-	memcpy(&right, &sd_data_buffer[(index % 512) + 2], sizeof(uint16_t));
-	left = (int16_t)left*0.25;
-	right = (int16_t)right*0.25;
+	memcpy(&left, &sd_data_buffer[index % sizeof(sd_data_buffer)], sizeof(uint16_t));
+	memcpy(&right, &sd_data_buffer[(index % sizeof(sd_data_buffer)) + 2], sizeof(uint16_t));
+	left = (int16_t)left;
+	right = (int16_t)right;
 	//samples += (32768 << 16) + 32768;
 	left += 32768;
 	right += 32768;
@@ -45,7 +45,7 @@ void TIM7_IRQHandler()
 
 	index += 4;
 	//	If next sample will wrap the sample array then change the buffer with samples
-	if(index % read_data_byte_counter == 0)
+	if(index % sizeof(sd_data_buffer) == 0)
 	{
 		static buffer_index = 0;
 		if(buffer_index % 2 == 0)
@@ -76,6 +76,7 @@ void TIM7_IRQHandler()
 		}
 		else
 		{
+			GPIOD->ODR ^= GPIO_ODR_ODR_14;
 			prev_state = state;
 			//	Change the state of device
 			state = STATE_READ_SAMPLES;
