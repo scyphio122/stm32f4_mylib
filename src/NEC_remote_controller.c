@@ -51,6 +51,8 @@ void EXTI15_10_IRQHandler()
         bit_counter = (uint8_t)0;
         //  Clear the buffer for the next received message
         NEC_transmitted_message = 0;
+        //	Mask the IR interrupt for a while
+        EXTI->IMR &= ~EXTI_IMR_MR10;
     }
 }
 
