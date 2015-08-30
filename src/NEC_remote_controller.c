@@ -65,7 +65,7 @@ void NEC_Remote_Init()
     //  Configure the chosen pin, on which the signal from IR decoder will arrive as an input
     GPIO_InputConfigure(NEC_GPIO_PORT, NEC_GPIO_PIN,gpio_speed_high, gpio_pupd_pull_up);
     //  Configure the Basic Timer (TIM6 or TIM7) in order to measure bit timings
-    TIM_Basic_Continuous_Counting(NEC_TIMERx, 0xFFFF);
+    TIM_Continuous_Counting(NEC_TIMERx, 0xFFFF, TIM6_PRESCALER);
     //  Configure EXTI which is connected to the chosen NEC_GPIO_PIN in order to capture the signal from IR decoder
     EXTI_InterruptFallingEdgeConfigure(NEC_EXTI);
 }
@@ -82,6 +82,9 @@ inline uint32_t Get_Bit()
 {
     ending_edge_timer_counter = NEC_TIMERx->CNT;
     uint16_t time_diff = (ending_edge_timer_counter - starting_edge_timer_counter)*NEC_TIMERx_PERIOD;
+
+
+
     starting_edge_timer_counter = ending_edge_timer_counter;
     uint32_t temp;
     if(time_diff > NEC_TRANSMISSION_TIMEOUT)

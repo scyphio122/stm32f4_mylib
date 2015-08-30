@@ -89,3 +89,19 @@ uint8_t Fifo_Put(fifo_t* fifo, uint8_t char_to_put)
 	return FIFO_OP_OK;
 }
 
+/**
+ * \brief This function clears the input and output indices and resets the byte counter
+ * \param fifo - the fifo to flush
+ */
+uint8_t Fifo_Flush(fifo_t* fifo)
+{
+	//	Clear the input data index
+	fifo->input_index = 0;
+	//	Clear the output data index
+	fifo->output_index = 0;
+	//	Clear the byte counter
+	fifo->byte_counter = 0;
+
+	return FIFO_OP_OK;
+}
+

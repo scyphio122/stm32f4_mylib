@@ -12,7 +12,7 @@
 void UART_Config(USART_TypeDef* USART, uint16_t data_transmission_settings, uint16_t baudRate, bool rx_enabled);
 void UART_DeInit(USART_TypeDef* USART);
 void Log_Uart(const char* text);
-
+void Log_Clear_Terminal();
 
 
 

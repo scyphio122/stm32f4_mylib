@@ -170,7 +170,7 @@ uint32_t SD_Card_Init()
 	uint16_t command = 0;
 	uint8_t max_block_read_count[4] = {0, 0, 0, 4};
 
-	Log_Uart("### Inicjalizacja karty SD ###\n\r\n\r");
+	Log_Uart("\n\r### Inicjalizacja karty SD ###\n\r");
 	//	Wait 1 ms after powering up the SD card
 	SysTick_Delay(1);
 
@@ -229,6 +229,7 @@ uint32_t SD_Card_Init()
 	Log_Uart("Progi napiec zgodne z wymaganiami.\n\rZmiana czestotliwosci SPI na 21MHz\n\r");
 	//	Set the SPI clock frequency to ~21MHz
 	SPI_Change_Clock(CARD_READER_SPI, CARD_READER_SPI_HIGH_SPEED_PRESCALER);
+	Log_Uart("---------------------\n\r");
 	Log_Uart("Inicjalizacja karty przebiegla pomyslnie!\n\r");
 
 	return RES_OK;

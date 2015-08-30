@@ -86,13 +86,32 @@ void TIM7_IRQHandler()
 		}
 		else
 		{
-			GPIOD->ODR ^= GPIO_ODR_ODR_14;
 			prev_state = state;
 			//	Change the state of device
 			state = STATE_READ_SAMPLES;
 		}
 		// Increment the buffer index which indicates which sample array is currently used and which is to be filled with samples
 		buffer_index++;
+	}
+}
+
+void TIM2_IRQHandler()
+{
+	//	Clear the interrupt flag
+	TIM2->SR &= TIM_SR_UIF;
+	GPIOD->ODR ^= GPIO_ODR_ODR_14;
+	//	Refresh the UART console
+	if(wav_file_playing)
+	{
+		uint32_t sec = WAV_Calculate_Length_To_Secs(sd_current_file.fptr - wav_file_header_size);
+		WAV_Convert_Seconds_To_String(sec, wav_current_song_time_string);
+
+		Log_Clear_Terminal();
+		Log_Uart(sd_files_list[file_index]);
+		Log_Uart("\n--------------\n");
+		Log_Uart(wav_current_song_time_string);
+		Log_Uart(':');
+		Log_Uart(wav_song_time_duration_string);
 	}
 }
 
@@ -133,17 +152,8 @@ void TIM_Basic_DelayInitialize(TIM_TypeDef* TIM)
 
 }
 
-void TIM_Basic_Continuous_Counting(TIM_TypeDef* TIM, uint16_t ARR_value)
+void TIM_Continuous_Counting(TIM_TypeDef* TIM, uint32_t ARR_value, uint32_t prescaler)
 {
-    //	Turn on the clock for TIM6 or TIM7
-	if(TIM == TIM6)
-	{
-		RCC->APB1ENR |= RCC_APB1ENR_TIM6EN;
-	}
-	if(TIM == TIM7)
-	{
-		RCC->APB1ENR |= RCC_APB1ENR_TIM7EN;
-	}
     //  Disable preloading Auto-Reload Register (max value instantly changes after setting this register)
     TIM->CR1 &= ~TIM_CR1_ARPE;
     //  Set continuous counting mode (timer does not stop after update)
@@ -153,11 +163,8 @@ void TIM_Basic_Continuous_Counting(TIM_TypeDef* TIM, uint16_t ARR_value)
     //  Enable Update Event
     TIM->CR1 &= ~TIM_CR1_UDIS;
     //  Set the prescaler
-    if(TIM == TIM7)
-        TIM->PSC = TIM7_PRESCALER;
-     else
-    if(TIM == TIM6)
-        TIM->PSC = TIM6_PRESCALER;
+     TIM->PSC = prescaler;
+
     //  Set the Auto-Reload Register to max. value
     TIM->ARR = ARR_value;
     // Enable the update event as a trigger
@@ -326,4 +333,9 @@ void TIM_Clear(TIM_TypeDef* TIM)
 void TIM_Set_Timer_Max_Count(TIM_TypeDef* TIM, uint32_t ticks)
 {
 		TIM->ARR = ticks;
+}
+
+void TIM_Enable_Update_Interrupt(TIM_TypeDef* TIM)
+{
+	TIM->DIER |= TIM_DIER_UIE;
 }

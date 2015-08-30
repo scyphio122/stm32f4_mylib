@@ -21,5 +21,5 @@ void 		Fifo_Init(fifo_t* fifo, uint8_t* buffer, uint16_t buffer_size);
 bool 		Fifo_Empty(fifo_t* fifo);
 uint8_t 	Fifo_Get(fifo_t* fifo, uint8_t* character);
 uint8_t 	Fifo_Put(fifo_t* fifo, uint8_t char_to_put);
-
+uint8_t 	Fifo_Flush(fifo_t* fifo);
 #endif

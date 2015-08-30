@@ -7,16 +7,17 @@ volatile bool		uart_transmission_in_progress = false;
 
 void USART2_IRQHandler()
 {
-	//	Put the character in the USART data register
-	USART2->DR = *uart_debug_log_buffer;
-	//	Increment the pointer to the next character
-	uart_debug_log_buffer++;
 	if(*uart_debug_log_buffer == 0)
 	{
 		uart_transmission_in_progress = false;
 		//	Disable the TX interrupt
 		USART2->CR1 &= ~USART_CR1_TXEIE;
 	}
+	//	Put the character in the USART data register
+	USART2->DR = *uart_debug_log_buffer;
+	//	Increment the pointer to the next character
+	uart_debug_log_buffer++;
+
 }
 
 /**
@@ -107,7 +108,6 @@ void UART_Config(USART_TypeDef* USART, uint16_t data_transmission_settings, uint
 
 void Log_Uart(const char* text)
 {
-
 	//	Set the pointer to the text
 	uart_debug_log_buffer = text;
 	//	Set the flag indicating that transmission is in progress
@@ -122,3 +122,9 @@ void Log_Uart(const char* text)
 		//__WFI();
 	}
 }
+
+void Log_Clear_Terminal()
+{
+	Log_Uart("\ec\e[3J");//"\33[H\33[2J");
+}
+

@@ -161,7 +161,7 @@ extern uint16_t					sd_number_of_files_in_dir;
 extern DIR						sd_current_directory;					/*< The current directory	*/
 extern FIL						sd_current_file;						/*< The current file */
 extern FILINFO					sd_current_file_information;			/*< The current checked file informations	*/
-extern TCHAR					sd_files_list[FILE_ARRAY_SIZE][13];
+extern TCHAR					sd_files_list[FILE_ARRAY_SIZE][16];
 extern BYTE						sd_data_buffer[SD_BUFFER_SIZE];
 extern BYTE						sd_data_buffer_additional[SD_BUFFER_SIZE];
 extern uint16_t					read_data_byte_counter;
