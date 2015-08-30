@@ -23,6 +23,12 @@
 #define SPI2_SCK						PIN_13
 #define SPI2_NSS						PIN_12
 
+#define SPI1_PORT						GPIOB
+#define SPI1_MISO						PIN_4
+#define SPI1_MOSI						PIN_5
+#define SPI1_SCK						PIN_3
+#define SPI1_NSS						PIN_15
+
 #define SPI_CLOCK_GENERATOR_CHAR		(uint8_t)0xff
 
 typedef struct
@@ -31,8 +37,14 @@ typedef struct
 	uint16_t 	data_size;
 }spi_buffer_t;
 
+typedef enum
+{
+	spi_hardware_nss,
+	spi_software_nss
+}spi_nss_pin_config_e;
+
 void 			SPI_De_Init(SPI_TypeDef* SPI);
-void 			SPI_Master_Init(SPI_TypeDef* SPI, uint8_t frequency, uint8_t cpol_cpha, uint8_t bit_order, bool hardware_chip_select);
+void 			SPI_Master_Init(SPI_TypeDef* SPI, uint8_t frequency, uint8_t cpol_cpha, uint8_t bit_order, spi_nss_pin_config_e hardware_chip_select);
 void 			SPI_Enable(SPI_TypeDef* SPI);
 void 			SPI_Disable_Periph_Full_Duplex(SPI_TypeDef* SPI);
 void 			SPI_Disable_Periph_Tx_Only(SPI_TypeDef* SPI);
@@ -49,4 +61,5 @@ void 			SPI_Chip_Select_Select(GPIO_TypeDef* GPIO, uint16_t ODR_pin);
 void 			SPI_Chip_Select_Deselect(GPIO_TypeDef* GPIO, uint16_t ODR_pin);
 void 			SPI_Wait_Until_Busy(SPI_TypeDef* SPI);
 uint32_t 		SPI_Get_Freq_Hz(SPI_TypeDef* SPI);
+void 			SPI_CRC_Calc_Enable(SPI_TypeDef* SPI, uint16_t crc_poly);
 #endif

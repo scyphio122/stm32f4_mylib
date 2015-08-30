@@ -52,21 +52,21 @@
 //#define SH1106
 #define SSD1306
 
-//#define INTERFACE_3WIRE_SPI   //3-wire SPI 
-#define INTERFACE_4WIRE_SPI     //4-wire SPI 
+#define INTERFACE_4WIRE_SPI     //4-wire SPI
+//#define INTERFACE_3WIRE_SPI   //3-wire SPI
 //#define INTERFACE_IIC         //I2C
 
-#define SSD1306_CS_PIN          SPI3_NSS//GPIO_PIN_12
-#define SSD1306_CLK_PIN       	SPI3_CLK//GPIO_PIN_13
-#define SSD1306_DIN_PIN         //GPIO_PIN_15
-#define SSD1306_RES_PIN         //GPIO_PIN_2
-#define SSD1306_DC_PIN          //GPIO_PIN_6
+#define SSD1306_CS_PIN          GPIO_PIN_0//GPIO_PIN_12
+#define SSD1306_CLK_PIN       	SPI1_SCK//GPIO_PIN_13
+#define SSD1306_DIN_PIN         0//GPIO_PIN_15
+#define SSD1306_RES_PIN         GPIO_PIN_1//GPIO_PIN_2
+#define SSD1306_DC_PIN          GPIO_PIN_2//GPIO_PIN_6
 
 #define SSD1306_CS_GPIO         GPIOB
 #define SSD1306_CLK_GPIO        GPIOB
 #define SSD1306_DIN_GPIO        GPIOB
-#define SSD1306_RES_GPIO        GPIOC
-#define SSD1306_DC_GPIO         GPIOC 
+#define SSD1306_RES_GPIO        GPIOB
+#define SSD1306_DC_GPIO         GPIOB
 
 #define __SSD1306_CS_SET()      GPIO_Set_Bit(SSD1306_CS_GPIO,  SSD1306_CS_PIN )
 #define __SSD1306_CS_CLR()      GPIO_Clear_Bit(SSD1306_CS_GPIO,  SSD1306_CS_PIN)
@@ -83,7 +83,7 @@
 #define __SSD1306_DIN_SET()     GPIO_Set_Bit(SSD1306_DIN_GPIO,  SSD1306_DIN_PIN )
 #define __SSD1306_DIN_CLR()     GPIO_Clear_Bit(SSD1306_DIN_GPIO,  SSD1306_DIN_PIN )
 
-#define __SSD1306_WRITE_BYTE(DATA) spi_read_write_byte(SPI2, DATA)
+#define __SSD1306_WRITE_BYTE(DATA) SPI_Send_Data_Only(SPI1, &DATA, 1)
 /*------------------------------------------------------------------------------------------------------*/
 //I2C
 #include "I2C.h"

@@ -37,8 +37,8 @@ void TIM7_IRQHandler()
 	//left = (int16_t)(left;
 	//right = (int16_t)right;
 	//samples += (32768 << 16) + 32768;
-	left += 32768;//32768;
-	right += 32768;//32768;
+	left += 32768;
+	right += 32768;
 	diff = left - 32768;
 	diff = diff *0.25;
 	left = 32768+diff;

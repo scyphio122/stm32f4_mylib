@@ -24,7 +24,7 @@ DIR						sd_current_directory;					/*< The current directory	*/
 FIL						sd_current_file;						/*< The current file */
 FILINFO					sd_current_file_information;			/*< The current checked file informations	*/
 
-TCHAR					sd_files_list[FILE_ARRAY_SIZE][13];		/*< The array where the file names will be held. The second dimension is 13 because of the max short file name size in FatFS */
+TCHAR					sd_files_list[FILE_ARRAY_SIZE][16];		/*< The array where the file names will be held. The second dimension is 13 because of the max short file name size in FatFS */
 BYTE					sd_data_buffer[SD_BUFFER_SIZE];
 BYTE					sd_data_buffer_additional[SD_BUFFER_SIZE];
 uint16_t				read_data_byte_counter = 0;
