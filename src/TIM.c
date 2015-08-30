@@ -12,6 +12,7 @@
 #include "sd_card_reader.h"
 #include "wav.h"
 #include "NEC_remote_controller.h"
+#include "USART.h"
 
 volatile unsigned char 	TIM_delayFinished = 0;
 
@@ -71,17 +72,19 @@ void TIM7_IRQHandler()
 		index = 0;
 		if(wav_eof)
 		{
+			//	Stop the DAC triggering timer
 			TIM_Stop(TIM7);
-			//ret_val = f_lseek(&sd_current_file, 0);
+			//	Close the file
 			ret_val = f_close(&sd_current_file);
-			//ret_val = f_read(&sd_current_file, sd_data_buffer_additional, 44, &index);
 
+			//	Clear the flags
 			wav_file_playing = false;
 			wav_file_chosen = false;
-
+			//	Clear the green led
+			GPIOD->ODR &= ~GPIO_ODR_ODR_12;
+			//	Set the next state
 			state = STATE_EXECUTE_USER_REQUESTS;
-
-
+			// clear the sample index
 			buffer_index = 0;
 		}
 		else
@@ -98,8 +101,7 @@ void TIM7_IRQHandler()
 void TIM2_IRQHandler()
 {
 	//	Clear the interrupt flag
-	TIM2->SR &= TIM_SR_UIF;
-	GPIOD->ODR ^= GPIO_ODR_ODR_14;
+	TIM2->SR &= ~TIM_SR_UIF;
 	//	Refresh the UART console
 	if(wav_file_playing)
 	{
@@ -109,9 +111,12 @@ void TIM2_IRQHandler()
 		Log_Clear_Terminal();
 		Log_Uart(sd_files_list[file_index]);
 		Log_Uart("\n--------------\n");
+		Log_Uart("Czas trwania:\n");
 		Log_Uart(wav_current_song_time_string);
-		Log_Uart(':');
+		Log_Uart(" / ");
 		Log_Uart(wav_song_time_duration_string);
+		Log_Uart("\n");
+
 	}
 }
 
@@ -167,8 +172,6 @@ void TIM_Continuous_Counting(TIM_TypeDef* TIM, uint32_t ARR_value, uint32_t pres
 
     //  Set the Auto-Reload Register to max. value
     TIM->ARR = ARR_value;
-    // Enable the update event as a trigger
-    TIM->CR2 |= TIM_CR2_MMS_1;
 }
 /**
  * 	This function starts the timer counter. It uses it to create a single delay.
