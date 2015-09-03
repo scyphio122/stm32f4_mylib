@@ -32,25 +32,20 @@ void TIM7_IRQHandler()
 	//	Clear the interrupt flag
 	TIM7->SR &= ~(TIM_SR_UIF);
 	//	Get the new sample
-
 	memcpy(&left, &sd_data_buffer[index % sizeof(sd_data_buffer)], sizeof(uint16_t));
 	memcpy(&right, &sd_data_buffer[(index % sizeof(sd_data_buffer)) + 2], sizeof(uint16_t));
 
+	//	Add the half of the range to convert signed int(sample) to unsigned int (DAC input)
 	left += 32768;
 	right += 32768;
-	diff = left - 32768;
-	diff = diff *0.25;
-	left = 32768+diff;
 
-	diff = right - 32768;
-	diff = diff *0.25;
-	right = 32768+diff;
-
-
-	samples = ((uint32_t)(left)<<16) + (uint32_t)right;
-
+	left = left * 0.25;
+	right = right * 0.25;
+	//	Put both samples together in one uint32_t to convert both channels at once
+	samples = ((uint32_t)(left)<<16) + (uint32_t)right>>8;
+	//	Start converting samples
 	DAC_Put_Data_Dual_12bit_L(samples);
-
+	// 	increase the samples buffer pointer
 	index += 4;
 	//	If next sample will wrap the sample array then change the buffer with samples
 	if(index % sizeof(sd_data_buffer) == 0)
