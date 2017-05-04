@@ -27,6 +27,7 @@ int16_t right;
 int16_t diff;
 uint16_t index;
 FRESULT ret_val;
+
 void TIM7_IRQHandler()
 {
 	//	Clear the interrupt flag
